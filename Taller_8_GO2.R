@@ -6,7 +6,7 @@ require(clusterProfiler);require(GOsummaries)
 ########################################################################################
 #MULTICATEGORÍA
 ########################################################################################
-url_file = "https://raw.githubusercontent.com/ccsosa/R_Examples/master/Hallmarks_of_Cancer_AT.csv"
+url_file = "https://raw.githubusercontent.com/ccsosa/TALLER_OMICAS/master/Hallmarks_of_Cancer_AT.csv"
 x_group <- read.csv(url_file)
 #leyendo archivo
 x_group[,1] <- NULL

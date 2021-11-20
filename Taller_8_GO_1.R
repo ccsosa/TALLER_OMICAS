@@ -1,6 +1,6 @@
 #cargar librerias
-  require(gprofiler2);library(biomaRt);library(topGO);
-require(clusterProfiler);require(GOsummaries)
+library(gprofiler2);library(biomaRt);library(topGO);
+library(clusterProfiler);library(GOsummaries)
 
 #cargar ejemplo desde CSV
   url_file = "https://raw.githubusercontent.com/ccsosa/R_Examples/master/GIM.csv"
@@ -38,6 +38,7 @@ go_ids= biomaRt::getBM(attributes=c('go_id', 'external_gene_name', 'namespace_10
               filters='external_gene_name', 
               values=x[,1], 
               mart=db)
+
 #cargar en caso de que no funcione desde biomaRt
 #write.csv(go_ids,"D:/REPO_GITHUB/TALLER_OMICAS/go_ids.csv",na = "",row.names = F,quote=F)
 go_ids <- read.csv("https://raw.githubusercontent.com/ccsosa/TALLER_OMICAS/master/go_ids.csv",header = T)
@@ -52,7 +53,8 @@ geneList=factor(as.integer(x[,1] %in% candidate_list),levels = c(0,1))
 names(geneList)= x[,1]
 
 #crear un objeto topGOdata
-GOdata=new('topGOdata', ontology='BP', allGenes = geneList, annot = annFUN.gene2GO, gene2GO = gene_2_GO)
+GOdata=new('topGOdata', ontology='BP', allGenes = geneList, annot = topGO::annFUN.gene2GO,
+           gene2GO = gene_2_GO)
 
 #classic_fisher_result=runTest(GOdata, algorithm='classic', statistic='fisher')
 #https://bioconductor.org/packages/release/bioc/vignettes/topGO/inst/doc/topGO.pdf
@@ -74,8 +76,8 @@ pValue.classic <- score(resultKS)
 pValue.elim <- score(resultKS.elim)[names(pValue.classic)]
 gstat <- topGO::termStat(GOdata, names(pValue.classic))
 
-
-showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 5,reverse = T,showEdges = T,useInfo = "np")
+par(cex = 1)
+showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 3)
 
 
 
@@ -86,3 +88,4 @@ showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 5,reverse = T,showE
 gl = list(GIM = x[,1]) # Two lists per component
 gs = GOsummaries::gosummaries(gl)
 plot(gs, fontsize = 8)
+
