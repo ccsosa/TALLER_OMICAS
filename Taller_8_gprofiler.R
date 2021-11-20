@@ -26,12 +26,12 @@ require(clusterProfiler);require(GOsummaries)
                            numeric_ns = "", as_short_link = FALSE,
                            sources="GO:BP")
 #GO PLOT
-  p <- gostplot(x_s, capped = F, interactive = FALSE)
+  p <- gprofiler2::gostplot(x_s, capped = F, interactive = FALSE)
   p
 
 
 #GO PLOT with the top five of GO
-  publish_gostplot(p, highlight_terms = x_s$result$term_id[1:10])
+  gprofiler2::publish_gostplot(p, highlight_terms = x_s$result$term_id[1:10])
 
 ###############################################################################################
 #topGO
@@ -39,10 +39,16 @@ require(clusterProfiler);require(GOsummaries)
 
 
 
-# create GO db for genes to be used using biomaRt - please note that this takes a while
-db= useMart('ENSEMBL_MART_ENSEMBL',dataset='hsapiens_gene_ensembl', host="www.ensembl.org")
-go_ids= getBM(attributes=c('go_id', 'external_gene_name', 'namespace_1003'), filters='external_gene_name', values=x[,1], mart=db)
+#Obtener los GO desde ENSEMBL
+db= biomaRt::useMart('ENSEMBL_MART_ENSEMBL',dataset='hsapiens_gene_ensembl', host="www.ensembl.org")
+go_ids= biomaRt::getBM(attributes=c('go_id', 'external_gene_name', 'namespace_1003'),
+              filters='external_gene_name', 
+              values=x[,1], 
+              mart=db)
+#cargar en caso de que no funcione desde biomaRt
+#write.csv(go_ids,"D:/REPO_GITHUB/TALLER_OMICAS/go_ids.csv",na = "",row.names = F,quote=F)
 gene_2_GO=unstack(go_ids[,c(1,2)])
+
 
 # remove any candidate genes without GO annotation
 keep = x[,1] %in% go_ids[,2]
