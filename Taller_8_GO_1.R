@@ -6,12 +6,6 @@ require(clusterProfiler);require(GOsummaries)
   url_file = "https://raw.githubusercontent.com/ccsosa/R_Examples/master/GIM.csv"
   x <- read.csv(url_file,header = T)
 
-#alternativa usando gosummaries
-  # gl = list(GIM = x[,1]) # Two lists per component
-  # gs = gosummaries(gl)
-  # plot(gs, fontsize = 8)
-
-
 
 ###############################################################################################
 #gprofiler2
@@ -38,7 +32,6 @@ require(clusterProfiler);require(GOsummaries)
 ###############################################################################################
 
 
-
 #Obtener los GO desde ENSEMBL
 db= biomaRt::useMart('ENSEMBL_MART_ENSEMBL',dataset='hsapiens_gene_ensembl', host="www.ensembl.org")
 go_ids= biomaRt::getBM(attributes=c('go_id', 'external_gene_name', 'namespace_1003'),
@@ -47,17 +40,18 @@ go_ids= biomaRt::getBM(attributes=c('go_id', 'external_gene_name', 'namespace_10
               mart=db)
 #cargar en caso de que no funcione desde biomaRt
 #write.csv(go_ids,"D:/REPO_GITHUB/TALLER_OMICAS/go_ids.csv",na = "",row.names = F,quote=F)
+go_ids <- read.csv("https://raw.githubusercontent.com/ccsosa/TALLER_OMICAS/master/go_ids.csv",header = T)
 gene_2_GO=unstack(go_ids[,c(1,2)])
 
 
-# remove any candidate genes without GO annotation
+#remover genes sin anotacion
 keep = x[,1] %in% go_ids[,2]
 keep =which(keep==TRUE)
 candidate_list=x[,1][keep]
 geneList=factor(as.integer(x[,1] %in% candidate_list),levels = c(0,1))
 names(geneList)= x[,1]
 
-# Create the class topGOdata
+#crear un objeto topGOdata
 GOdata=new('topGOdata', ontology='BP', allGenes = geneList, annot = annFUN.gene2GO, gene2GO = gene_2_GO)
 
 #classic_fisher_result=runTest(GOdata, algorithm='classic', statistic='fisher')
@@ -69,7 +63,7 @@ resultKS <- runTest(GOdata, algorithm = "classic", statistic = "ks")
 resultKS.elim <- runTest(GOdata, algorithm = "elim", statistic = "ks")
 
 #summarize in a table
-allRes <- GenTable(GOdata, classicFisher = resultFisher,
+allRes <- topGO::GenTable(GOdata, classicFisher = resultFisher,
                     classicKS = resultKS, elimKS = resultKS.elim,
                     orderBy = "elimKS", ranksOf = "classicFisher", topNodes = 10)
 
@@ -78,21 +72,17 @@ allRes <- GenTable(GOdata, classicFisher = resultFisher,
 #diversas formas de obtener p valores
 pValue.classic <- score(resultKS)
 pValue.elim <- score(resultKS.elim)[names(pValue.classic)]
-gstat <- termStat(GOdata, names(pValue.classic))
-
-#add colors for graphics
- colMap <- function(x) {
-   .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
-   return(.col[match(1:length(x), order(x))])
- }
-
- gSize <- gstat$Annotated / max(gstat$Annotated) * 4
- gCol <- colMap(gstat$Significant)
-
-
-#plots
-  #plot(pValue.classic, pValue.elim, xlab = "p-value classic", ylab = "p-value elim",
-      #pch = 19, cex = gSize, col = gCol)
+gstat <- topGO::termStat(GOdata, names(pValue.classic))
 
 
 showSigOfNodes(GOdata, score(resultKS.elim), firstSigNodes = 5,reverse = T,showEdges = T,useInfo = "np")
+
+
+
+###############################################################################################
+#GOsummaries
+###############################################################################################
+#alternativa usando gosummaries
+gl = list(GIM = x[,1]) # Two lists per component
+gs = GOsummaries::gosummaries(gl)
+plot(gs, fontsize = 8)
