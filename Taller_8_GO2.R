@@ -3,17 +3,19 @@
 require(gprofiler2);library(biomaRt);library(topGO);
 require(clusterProfiler);require(GOsummaries)
 
-########################################################################################
-#MULTICATEGORÍA
-########################################################################################
+###############################################################################################
+#gprofiler2
+###############################################################################################
+
 url_file = "https://raw.githubusercontent.com/ccsosa/TALLER_OMICAS/master/Hallmarks_of_Cancer_AT.csv"
 x_group <- read.csv(url_file)
 #leyendo archivo
 x_group[,1] <- NULL
+
 #definiendo categorias
 CH <- c("AID","AIM","DCE","ERI","EGS","GIM","IA","RCD","SPS","TPI")
 
-#preparación
+#preparacion de los datos
 x_Hsap <- lapply(seq_len(length(CH)), function(i){
   x_unique <- unique(na.omit(x_group[,i]))
   x_unique <- x_unique[which(x_unique!="")]
@@ -22,7 +24,7 @@ x_Hsap <- lapply(seq_len(length(CH)), function(i){
 })
 
 names(x_Hsap) <- CH
-#GO
+#Correr enriquecimiento funcional para todas las listas de genes
 x_s_group <-  gprofiler2::gost(query = x_Hsap,
                                organism = "hsapiens", ordered_query = FALSE,
                                multi_query = FALSE, significant = TRUE, exclude_iea = FALSE,
@@ -33,10 +35,48 @@ x_s_group <-  gprofiler2::gost(query = x_Hsap,
 
 res_group <- x_s_group$result
 
+#Obtener numero de GO enriquecidos por lista de genes
+tapply(res_group$query,res_group$query,length)
+
+#Obtener top tres GO por categoria
+x_res <- list()
+for(i in 1:length(CH)){
+  x_res[[i]] <- res_group[which(res_group$query==CH[[i]]),]
+  x_res[[i]] <- x_res[[i]][c(1:3),]
+}
+x_res <- do.call(rbind, x_res)
 
 
+#obtener la tabla de frecuencias para graficar
+x_res$query <- factor(x_res$query,levels = CH)
+other_table <- table( x_res$query,x_res$term_name)
+
+par(mar = c(13, 4, 11, 1) + 0.2) #add room for the rotated labels
+#par(mar=c(1,1,1,1))
+
+bar <- barplot(other_table,
+        main = "",
+        xlab = "", ylab = "Frecuencia",
+        col = rainbow(10),
+        xaxt="n",
+        axes=T,
+       # legend.text = rownames(other_table),
+        beside = F,
+        las=2,horiz = F,
+        space=0,cex.names = 0.8)
+
+labs <- paste(colnames(other_table))
+text(cex=1, x=bar-1, y=-.52,labs, xpd=TRUE, srt=45)
+#axis(2, at = 0:5, labels = 0:5)
+legend("top", rownames(other_table), fill = rainbow(10), bty = "n",horiz = T,inset = c(0,-0.5),xpd = T,
+       cex = 0.5)
 
 
+###############################################################################################
+#clusterProfiler
+###############################################################################################
+
+#Organizar la lista de genes para usarse en clusterProfiler
 x_Hsap_2 <- list()
 for(i in 1:length(x_Hsap)){
   x_Hsap_2[[i]] <- clusterProfiler::bitr(as.character(unlist(x_Hsap[[i]])),
@@ -45,13 +85,25 @@ for(i in 1:length(x_Hsap)){
                                          OrgDb = "org.Hs.eg.db")[,2]
 }
 names(x_Hsap_2) <-CH
-x_compare <- compareCluster(geneClusters=x_Hsap_2,enrichGO, OrgDb = org.Hs.eg.db)
 
-dotplot(x_compare)
-dotplot(x_compare, x="group") + facet_grid(~Cluster)
-cnetplot(x_compare)
 
-# Modificar archivo de resultados para correr enrichplot
+x_compare <- clusterProfiler::compareCluster(geneClusters=x_Hsap_2,enrichGO, OrgDb = org.Hs.eg.db)
+
+clust_results <- x_compare@compareClusterResult
+tapply(clust_results$Cluster,clust_results$Cluster,length)
+
+
+#Graficar en un dotplot
+enrichplot::dotplot(x_compare)
+
+#Graficar una red 
+enrichplot::cnetplot(x_compare)
+
+#
+###############################################################################################
+#ver los resultados de gprofiler en clusterprofiler
+###############################################################################################
+#Modificar archivo de resultados para correr enrichplot
 gp_mod =              res_group[,c("query",
                                    "source",
                                    "term_id",
@@ -71,74 +123,78 @@ names(gp_mod) = c("Cluster", "Category", "ID", "Description", "p.adjust",
 gp_mod$geneID = gsub(",", "/", gp_mod$geneID)
 gp_mod$Cluster <- factor(gp_mod$Cluster)
 
-
+# Convertir de gprofiler a clusterprofiler
 gp_mod_cluster = new("compareClusterResult", compareClusterResult = gp_mod)
 gp_mod_enrich = new("enrichResult", result = gp_mod)
 
 
 #dotplot
 enrichplot::dotplot(gp_mod_cluster)
-#ca
-p2 <- enrichplot::cnetplot(gp_mod_cluster, categorySize="pvalue")
+#red de interacciones
+p2 <- enrichplot::cnetplot(gp_mod_cluster)
 p2
 
-edox2 <- pairwise_termsim(gp_mod_enrich)
-p4 <- emapplot(edox2, cex_category=1.5,layout="kk")
 
-########################################################################################
-results_genes = gconvert(x[,1], organism = "hsapiens",
-                         target = "ENTREZGENE_ACC", filter_na = FALSE)
+###############################################################################################
+#GOsummaries
+###############################################################################################
+#Ajustar el formato a GOSummaries
+x_Hsap3 <- lapply(seq_len(length(CH)), function(i){
+  x_unique <- as.character(x_Hsap[[i]])
+  return(x_unique)
+})
 
+names(x_Hsap3) <- CH
 
-ggo <- groupGO(gene     = results_genes,
-               OrgDb    = "org.Hs.eg.db",
-               ont      = "BP",
-               level    = 3,
-               readable = TRUE)
-
-
-
-
-head(ggo)
+#Correr el analisis y graficar
+gs1 = gosummaries(x_Hsap3)
+plot(gs1[1:5])
+plot(gs1[6:10])
 
 
-gene.df <- clusterProfiler::bitr(x[,1], fromType = "SYMBOL",
-                                 toType = c("ENTREZID"),
-                                 OrgDb = org.Hs.eg.db)
+###############################################################################################
+#GOCompare
+###############################################################################################
+#Cargar datos de ejemplo (cuatro cancer hallmarks)
+data(H_sapiens_compress)
+data(A_thaliana_compress)
+
+#Definir la columna que tiene la info de los GO enriquecidos
+GOterm_field <- "Functional_Category"
+
+#Nombrar las especies
+species1 <- "H. sapiens"
+species2 <- "A. thaliana"
+
+x <- compareGOspecies(df1=H_sapiens_compress,
+                      df2=A_thaliana_compress,
+                      GOterm_field=GOterm_field,
+                      species1=species1,
+                      species2=species2)
+
+#graficar el PCoA
+x$graphics
+  
+#cluster con las distancias
+plot(hclust(x$distance,"ward.D"))
+
+#Extraer pesos para GO enriquecidos en una sola especie 
+x_graph <- graphGOspecies(df=H_sapiens_compress,
+                    GOterm_field=GOterm_field,
+                    option = "GO",
+                    numCores=2,
+                    saveGraph=FALSE,
+                    outdir = NULL)
 
 
-
-gs = gosummaries(x_Hsap_2)
-
-
-
-#gostplot(gp_up, interactive = RUE)
-#https://yulab-smu.top/biomedical-knowledge-mining-book/clusterprofiler-go.html
-ego <- enrichGO(gene          = gene.df$ENTREZID,
-                OrgDb         = "org.Hs.eg.db",
-                ont           = "BP",
-                pAdjustMethod = "BH",
-                pvalueCutoff  = 0.05,
-                readable      = TRUE)
-head(ego)
-
-#Grafo aciclico
-goplot(ego)
-barplot(ego, showCategory=20)
-heatplot(ego, showCategory=10)
-
-edox2 <- pairwise_termsim(ego)
-p1 <- emapplot(edox2)
-p1
-#Running function to get graph of a list of features and GO terms
-
-x <- GOCompare::graphGOspecies(df=x_s$result,
-                               GOterm_field="term_name",
-                               option = 2,
-                               numCores=6,
-                               saveGraph=FALSE,
+#Extraer pesos para GO enriquecidos entre dos especies y categorias
+x_graph_two <- graph_two_GOspecies(x=x,
+                               species1=species1,
+                               species2=species2,
+                               GOterm_field=GOterm_field,
+                               numCores=2,
+                               saveGraph = FALSE,
+                               option= "GO",
                                outdir = NULL)
 
-
-#################################################
 
