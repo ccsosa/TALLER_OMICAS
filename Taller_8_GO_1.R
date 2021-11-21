@@ -10,7 +10,7 @@ library(clusterProfiler);library(GOsummaries)
 ###############################################################################################
 #gprofiler2
 ###############################################################################################
-#Functional enrichment analysis
+#Analisis de enriquecimiento funcional
   x_s <-  gprofiler2::gost(query = x[,1],
                            organism = "hsapiens", ordered_query = FALSE,
                            multi_query = FALSE, significant = TRUE, exclude_iea = FALSE,
@@ -24,7 +24,7 @@ library(clusterProfiler);library(GOsummaries)
   p
 
 
-#GO PLOT with the top five of GO
+#GO PLOT con el top diez
   gprofiler2::publish_gostplot(p, highlight_terms = x_s$result$term_id[1:10])
 
 ###############################################################################################
@@ -42,6 +42,7 @@ go_ids= biomaRt::getBM(attributes=c('go_id', 'external_gene_name', 'namespace_10
 #cargar en caso de que no funcione desde biomaRt
 #write.csv(go_ids,"D:/REPO_GITHUB/TALLER_OMICAS/go_ids.csv",na = "",row.names = F,quote=F)
 go_ids <- read.csv("https://raw.githubusercontent.com/ccsosa/TALLER_OMICAS/master/go_ids.csv",header = T)
+
 gene_2_GO=unstack(go_ids[,c(1,2)])
 
 
