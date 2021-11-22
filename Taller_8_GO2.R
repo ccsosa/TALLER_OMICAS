@@ -1,7 +1,7 @@
 ########################################################################################
 #cargar librerias
 require(gprofiler2);library(biomaRt);library(topGO);
-require(clusterProfiler);require(GOsummaries)
+require(clusterProfiler);require(GOsummaries);library(GOCompare)
 
 ###############################################################################################
 #gprofiler2
